@@ -37,6 +37,7 @@ int mandel(int i, int j)
 
 int main()
 {
+	FILE *a;
 
 #pragma omp parallel for num_threads(8) collapse(2)
     for (int i = 0; i < x; i++)
@@ -47,6 +48,23 @@ int main()
             data[i][j] = (mandel(i, j) == maxIter);
         }
     }
+	
+	a = fopen("saida.ppm","w");
+	
+	fprintf(a, "P3\n%d %d\n255\n", x, y);
+	
+	for (int i = 0; i < x; i++)
+    {
+        for (int j = 0; j < y; j++)
+        {
+
+            if (data[i][j] == 0)
+				fprintf(a, "255 255 255\n");
+			else
+				fprintf(a, "0 0 0\n");
+        }
+    }
+	fclose(a);
 
     return 0;
 }
