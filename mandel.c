@@ -41,6 +41,9 @@ int main(int argc, char **argv)
     MPI_Request req;
     FILE *a;
 
+    MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+
     if (argc == 4)
     {
         y = atoi(argv[1]);
@@ -55,9 +58,6 @@ int main(int argc, char **argv)
             printf("Usar: %s [Numero de linhas] [Numero de colunas] [Numero de iteracoes]\n", argv[0]);
         exit(1);
     }
-
-    MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
-    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
     if (worldSize == 1)
         aux = 0;
@@ -99,19 +99,14 @@ int main(int argc, char **argv)
         a = fopen("saida.ppm", "w");
         printf("Host 0 - Resultado obtido \n");
         (void)fprintf(a, "P6\n%d %d\n255\n", y, x);
-        // fprintf(a, "P3\n%d %d\n255\n", y, x);
-
 
         for (int i = 0; i <= areaa[1] - areaa[0]; i++)
         {
             for (int j = 0; j < y; j++)
             {
                 int cor = (int)(((float)output[(i * y) + j] / (float)maxIter) * 255);
-
                 unsigned char cores[3] = {(int)(cor) % 255, (int)((cor % 254) / 1.5), 0};
                 (void)fwrite(cores, 1, 3, a);
-
-                // fprintf(a, "%d %d %d\n", (int)(cor) % 255, (int)((cor % 254) / 1.5), 0);
             }
         }
 
@@ -127,7 +122,6 @@ int main(int argc, char **argv)
                     int cor = (int)(((float)output[(i * y) + j] / (float)maxIter) * 255);
                     unsigned char cores[3] = {(int)(cor) % 255, (int)((cor % 254) / 1.5), 0};
                     (void)fwrite(cores, 1, 3, a);
-                    // fprintf(a, "%d %d %d\n", (int)(cor) % 255, (int)((cor % 254) / 1.5), 0);
                 }
             }
         }
@@ -138,7 +132,7 @@ int main(int argc, char **argv)
         MPI_Send((void *)output, (y * (areaa[1] - areaa[0] + 1)), MPI_INT, 0, 0, MPI_COMM_WORLD);
         printf("Host %d - Resultado enviado para Host 0\n", myRank);
     }
-
+    free(output);
     MPI_Finalize();
     printf("Host %d - Finalizado\n", myRank);
     return 0;
