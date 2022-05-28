@@ -3,14 +3,14 @@
 #include <omp.h>
 #include <mpi.h>
 
+#include <math.h>
+
 float norm(float val, float rmin, float rmax, float vmin, float vmax)
 {
     return ((vmax - vmin) * ((val - rmin) / (rmax - rmin))) + vmin;
 }
 
-int x = 1000;
-int y = 1000;
-int maxIter = 30;
+int x, y, maxIter;
 
 int mandel(int i, int j)
 {
@@ -33,7 +33,7 @@ int mandel(int i, int j)
     return iteration;
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
     int worldSize, myRank, aux, dest, areaa[2];
     MPI_Status st;
@@ -41,13 +41,18 @@ int main(int argc, char ** argv)
     MPI_Request req;
     FILE *a;
 
-    if (argc == 4){
-        x = atoi(argv[1]);
-        y = atoi(argv[2]);
+    if (argc == 4)
+    {
+        y = atoi(argv[1]);
+        x = atoi(argv[2]);
         maxIter = atoi(argv[3]);
-        printf("Tamanho %dx%d\n%d Iterações\n",x,y,maxIter);
-    } else {
-        printf("Usar: %s [Numero de linhas] [Numero de colunas] [Numero de iteracoes]\n", argv[0]);
+        if (myRank == 0)
+            printf("Tamanho %dx%d\n%d Iterações\n", x, y, maxIter);
+    }
+    else
+    {
+        if (myRank == 0)
+            printf("Usar: %s [Numero de linhas] [Numero de colunas] [Numero de iteracoes]\n", argv[0]);
         exit(1);
     }
 
@@ -65,7 +70,7 @@ int main(int argc, char ** argv)
                 areaa[0] = (x / worldSize) * i;
                 areaa[1] = ((x / worldSize) * (i + 1)) - 1;
                 MPI_Send((void *)areaa, 2, MPI_INT, i, 0, MPI_COMM_WORLD);
-                printf("Enviado area para %d\n", i);
+                printf("Host 0 - Enviado dimensões para Host %d\n", i);
             }
 
             areaa[0] = 0;
@@ -74,7 +79,7 @@ int main(int argc, char ** argv)
         else
         {
             MPI_Recv(areaa, 2, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &st);
-            printf("Recebi %d %d rank %d\n", areaa[0], areaa[1], myRank);
+            printf("Host %d - Recebido limites [%d, %d] de Host 0\n", myRank, areaa[0], areaa[1]);
         }
     }
     int *output = malloc(sizeof(int) * (y * (areaa[1] - areaa[0] + 1)));
@@ -91,29 +96,29 @@ int main(int argc, char ** argv)
     if (myRank == 0)
     {
         a = fopen("saida.ppm", "w");
-        fprintf(a, "P3\n%d %d\n255\n", x, y);
+        fprintf(a, "P3\n%d %d\n255\n", y, x);
 
+        printf("Host 0 - Usando limites [0, %d]\n", areaa[1] - areaa[0]);
         for (int i = 0; i <= areaa[1] - areaa[0]; i++)
         {
             for (int j = 0; j < y; j++)
             {
-                int cor = ((float)output[(i * y) + j] / (float)maxIter) * 255 ;
-                fprintf(a, "%d %d %d\n", cor, cor / 2, cor / 3);
+                int cor = (int)(((float)output[(i * y) + j] / (float)maxIter) * 255);
+                fprintf(a, "%d %d %d\n", (int)(cor) % 255, (int)((cor % 254) / 1.5), 0);
             }
         }
 
         for (int k = 1; k < worldSize; k++)
         {
-            printf("HOST 0 RECEBENDO DE HOST %d\n", k);
             MPI_Recv((void *)output, (y * (areaa[1] - areaa[0] + 1)), MPI_INT, k, 0, MPI_COMM_WORLD, &st);
-            printf("HOST 0 RESPOSTA RECEBIDA DE HOST %d\n", k);
+            printf("Host 0 - Resultado recebido de Host %d\n", k);
 
             for (int i = 0; i <= areaa[1] - areaa[0]; i++)
             {
                 for (int j = 0; j < y; j++)
                 {
-                    int cor = ((float)output[(i * y) + j] / (float)maxIter) * 255 ;
-                    fprintf(a, "%d %d %d\n", cor, cor / 2, cor / 3);
+                    int cor = (int)(((float)output[(i * y) + j] / (float)maxIter) * 255);
+                    fprintf(a, "%d %d %d\n", (int)(cor) % 255, (int)((cor % 254) / 1.5), 0);
                 }
             }
         }
@@ -122,10 +127,10 @@ int main(int argc, char ** argv)
     else
     {
         MPI_Send((void *)output, (y * (areaa[1] - areaa[0] + 1)), MPI_INT, 0, 0, MPI_COMM_WORLD);
-        printf("Host %d enviado para host 0\n", myRank);
+        printf("Host %d - Resultado enviado para Host 0\n", myRank);
     }
 
     MPI_Finalize();
-    printf("Host %d finalizou\n", myRank);
+    printf("Host %d - Finalizado\n", myRank);
     return 0;
 }
