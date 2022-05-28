@@ -75,6 +75,8 @@ int main(int argc, char **argv)
 
             areaa[0] = 0;
             areaa[1] = ((x / worldSize) * 1) - 1;
+            
+            printf("Host 0 - Usando limites [0, %d]\n", areaa[1] - areaa[0]);
         }
         else
         {
@@ -83,7 +85,6 @@ int main(int argc, char **argv)
         }
     }
     int *output = malloc(sizeof(int) * (y * (areaa[1] - areaa[0] + 1)));
-
 #pragma omp parallel for num_threads(8) collapse(2)
     for (int i = 0; i <= areaa[1] - areaa[0]; i++)
     {
@@ -96,15 +97,21 @@ int main(int argc, char **argv)
     if (myRank == 0)
     {
         a = fopen("saida.ppm", "w");
-        fprintf(a, "P3\n%d %d\n255\n", y, x);
+        printf("Host 0 - Resultado obtido \n");
+        (void)fprintf(a, "P6\n%d %d\n255\n", y, x);
+        // fprintf(a, "P3\n%d %d\n255\n", y, x);
 
-        printf("Host 0 - Usando limites [0, %d]\n", areaa[1] - areaa[0]);
+
         for (int i = 0; i <= areaa[1] - areaa[0]; i++)
         {
             for (int j = 0; j < y; j++)
             {
                 int cor = (int)(((float)output[(i * y) + j] / (float)maxIter) * 255);
-                fprintf(a, "%d %d %d\n", (int)(cor) % 255, (int)((cor % 254) / 1.5), 0);
+
+                unsigned char cores[3] = {(int)(cor) % 255, (int)((cor % 254) / 1.5), 0};
+                (void)fwrite(cores, 1, 3, a);
+
+                // fprintf(a, "%d %d %d\n", (int)(cor) % 255, (int)((cor % 254) / 1.5), 0);
             }
         }
 
@@ -118,11 +125,13 @@ int main(int argc, char **argv)
                 for (int j = 0; j < y; j++)
                 {
                     int cor = (int)(((float)output[(i * y) + j] / (float)maxIter) * 255);
-                    fprintf(a, "%d %d %d\n", (int)(cor) % 255, (int)((cor % 254) / 1.5), 0);
+                    unsigned char cores[3] = {(int)(cor) % 255, (int)((cor % 254) / 1.5), 0};
+                    (void)fwrite(cores, 1, 3, a);
+                    // fprintf(a, "%d %d %d\n", (int)(cor) % 255, (int)((cor % 254) / 1.5), 0);
                 }
             }
         }
-        fclose(a);
+        (void)fclose(a);
     }
     else
     {
