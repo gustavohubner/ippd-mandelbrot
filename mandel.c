@@ -35,7 +35,7 @@ int mandel(int i, int j)
 
 int main(int argc, char **argv)
 {
-    int worldSize, myRank, aux, dest, areaa[2], offset;
+    int worldSize, myRank, dest, areaa[2], offset;
     MPI_Status st;
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
@@ -58,10 +58,9 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    if (worldSize == 1)
-        aux = 0;
-    else
+    if (worldSize != 1)
     {
+
         if (myRank == 0)
         {
             int end = x - (((int)(x / worldSize)) * (worldSize - 1));
@@ -86,11 +85,13 @@ int main(int argc, char **argv)
     }
     int *output = malloc(sizeof(int) * (y * (areaa[1] - areaa[0] + 1)));
 
-#pragma omp parallel for num_threads(8) collapse(2) schedule(guided, 1024)
+#pragma omp parallel for num_threads(8) collapse(2) schedule(dynamic, 1024)
     for (int i = 0; i <= areaa[1] - areaa[0]; i++)
     {
         for (int j = 0; j < y; j++)
         {
+            if (i == 0 && j == 0)
+                printf("Host %d - OpenMP Threads: %d\n", myRank, omp_get_num_threads());
             output[(i * y) + j] = mandel(areaa[0] + i, j);
         }
     }
