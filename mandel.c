@@ -35,14 +35,13 @@ int mandel(int i, int j)
 
 int main(int argc, char **argv)
 {
-    int worldSize, myRank, aux, dest, areaa[2];
+    int worldSize, myRank, aux, dest, areaa[2], offset;
     MPI_Status st;
     MPI_Init(&argc, &argv);
-    MPI_Request req;
-    FILE *a;
-
     MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+    MPI_Request req;
+    FILE *a;
 
     if (argc == 4)
     {
@@ -55,7 +54,7 @@ int main(int argc, char **argv)
     else
     {
         if (myRank == 0)
-            printf("Usar: %s [Numero de linhas] [Numero de colunas] [Numero de iteracoes]\n", argv[0]);
+            printf("Usar: mpirun %s [Numero de linhas] [Numero de colunas] [Numero de iteracoes]\n", argv[0]);
         exit(1);
     }
 
@@ -65,17 +64,18 @@ int main(int argc, char **argv)
     {
         if (myRank == 0)
         {
+            int end = x - (((int)(x / worldSize)) * (worldSize - 1));
+            offset = end - ((int)(x / worldSize));
             for (int i = 1; i < worldSize; i++)
             {
-                areaa[0] = (x / worldSize) * i;
-                areaa[1] = ((x / worldSize) * (i + 1)) - 1;
+                areaa[0] = (x / worldSize) * i + offset;
+                areaa[1] = ((x / worldSize) * (i + 1)) - 1 + offset;
                 MPI_Send((void *)areaa, 2, MPI_INT, i, 0, MPI_COMM_WORLD);
                 printf("Host 0 - Enviado dimensões para Host %d\n", i);
             }
-
             areaa[0] = 0;
-            areaa[1] = ((x / worldSize) * 1) - 1;
-            
+            areaa[1] = ((x / worldSize) * 1) - 1 + offset;
+
             printf("Host 0 - Usando limites [0, %d]\n", areaa[1] - areaa[0]);
         }
         else
@@ -85,7 +85,8 @@ int main(int argc, char **argv)
         }
     }
     int *output = malloc(sizeof(int) * (y * (areaa[1] - areaa[0] + 1)));
-#pragma omp parallel for num_threads(8) collapse(2)
+
+#pragma omp parallel for num_threads(8) collapse(2) schedule(guided, 1024)
     for (int i = 0; i <= areaa[1] - areaa[0]; i++)
     {
         for (int j = 0; j < y; j++)
@@ -105,6 +106,7 @@ int main(int argc, char **argv)
             for (int j = 0; j < y; j++)
             {
                 int cor = (int)(((float)output[(i * y) + j] / (float)maxIter) * 255);
+
                 unsigned char cores[3] = {(int)(cor) % 255, (int)((cor % 254) / 1.5), 0};
                 (void)fwrite(cores, 1, 3, a);
             }
@@ -112,10 +114,10 @@ int main(int argc, char **argv)
 
         for (int k = 1; k < worldSize; k++)
         {
-            MPI_Recv((void *)output, (y * (areaa[1] - areaa[0] + 1)), MPI_INT, k, 0, MPI_COMM_WORLD, &st);
+            MPI_Recv((void *)output, (y * (areaa[1] - areaa[0] + 1 - offset)), MPI_INT, k, 0, MPI_COMM_WORLD, &st);
             printf("Host 0 - Resultado recebido de Host %d\n", k);
 
-            for (int i = 0; i <= areaa[1] - areaa[0]; i++)
+            for (int i = 0; i <= areaa[1] - areaa[0] - offset; i++)
             {
                 for (int j = 0; j < y; j++)
                 {
