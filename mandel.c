@@ -72,7 +72,8 @@ int main(int argc, char **argv)
         y = atoi(argv[1]);
         x = atoi(argv[2]);
         maxIter = atoi(argv[3]);
-        if (myRank == 0) {
+        if (myRank == 0) 
+		{
 			if (y < 1) {
 				printf("Numero de linhas invalido, novo y = 1500\n");
 				y = 1500;
@@ -86,10 +87,15 @@ int main(int argc, char **argv)
 				maxIter = 1000;
 			}
 			printf("Tamanho %dx%d\n%d Iterações\n", x, y, maxIter);
-		} else {
-			if (y < 1) y = 1500;
-			if (x < 1) x = 1500;
-			if (maxIter < 1) maxIter = 1000;
+		} 
+		else 
+		{
+			if (y < 1) 
+				y = 1500;
+			if (x < 1) 
+				x = 1500;
+			if (maxIter < 1) 
+				maxIter = 1000;
 		}
     }
     else
@@ -178,7 +184,9 @@ int main(int argc, char **argv)
 		}
 		free(output);
 		printf("Host %d - Finalizado\n", myRank);
-	} else {
+	} 
+	else 
+	{
 		printf("Apenas um host detectado, favor usar pelo menos dois\n");
 	}
     MPI_Finalize();
