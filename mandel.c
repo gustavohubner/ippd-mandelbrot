@@ -86,6 +86,10 @@ int main(int argc, char **argv)
 				maxIter = 1000;
 			}
 			printf("Tamanho %dx%d\n%d Iterações\n", x, y, maxIter);
+		} else {
+			if (y < 1) y = 1500;
+			if (x < 1) x = 1500;
+			if (maxIter < 1) maxIter = 1000;
 		}
     }
     else
